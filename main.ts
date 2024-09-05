@@ -1,10 +1,14 @@
 import "dotenv/config";
 
+import $RefParser from "@apidevtools/json-schema-ref-parser";
 import express, { type Request, type Response } from "express";
 import { AzureOpenAI } from "openai";
-import spec from "./openapi.json";
+
+import spec from "./specs/ecommerce.json";
 
 const app = express();
+
+await $RefParser.dereference(spec);
 
 app.get("*", async (req: Request, res: Response) => {
   let path = req.path;
@@ -14,12 +18,13 @@ app.get("*", async (req: Request, res: Response) => {
 
   const specPath = spec.paths[path];
   if (!specPath) {
+    console.log(`[404] ${path}`);
     return res.status(404).send();
   }
 
-  const responseSchema = specPath.get.responses[200].content["application/json"].schema;
+  console.log(`[200] ${path}`);
 
-  console.log(JSON.stringify(responseSchema, null, 2));
+  const responseSchema = specPath.get.responses[200].content["application/json"].schema;
 
   const client = new AzureOpenAI();
   const completion = await client.chat.completions.create({

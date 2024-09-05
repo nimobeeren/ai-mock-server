@@ -1,0 +1,1440 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "iO time tracking OpenAPI specification",
+    "description": "iO time tracking OpenAPI specification",
+    "contact": {
+      "name": "Koen Peters",
+      "email": "koen.peters@iodigital.com"
+    },
+    "version": "20"
+  },
+  "servers": [
+    {
+      "url": "https://bridge.hosted-tools.com",
+      "description": "production server"
+    },
+    {
+      "url": "https://bridge-acc.testing.intracto.com",
+      "description": "acceptance server"
+    },
+    {
+      "url": "https://bridge.testing.intracto.com",
+      "description": "dev server"
+    },
+    {
+      "url": "http://localhost:3000",
+      "description": "local dev server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Work Logs",
+      "description": "All work log related endpoints"
+    },
+    {
+      "name": "Log Entities",
+      "description": "All log entity related endpoints"
+    },
+    {
+      "name": "Log Schedule",
+      "description": "All log schedule related endpoints"
+    },
+    {
+      "name": "Preferences",
+      "description": "All preference related endpoints"
+    }
+  ],
+  "paths": {
+    "/work-logs": {
+      "get": {
+        "tags": [
+          "Work Logs"
+        ],
+        "description": "<p>Retrieve all work logs of the logged in person in the given time window grouped by date.</p> <p>All dates from start to end data will occur in the array,even if there are no logs on that day.  They will be descendingly sorted by date.</p> <p>Per group the WorkLogs are sorted on multiple properties, in this order:</p> <ul>\n  <li> startTime (if startTime is empty then they are put at the back of the array)\n  <li> stoptime (needed for when two work logs start on the same time)\n  <li> positionInDay\n  <li> id (needed for when two work logs are identical for all other properties. We need to guarantee \n    that the order is identical for two consecutive requests)\n</ul>",
+        "operationId": "getWorkLogs",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StartDateParam"
+          },
+          {
+            "$ref": "#/components/parameters/EndDateParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/getWorkLogsSuccessResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/400ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/401ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/500ErrorResponse"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Work Logs"
+        ],
+        "description": "<p>Create a batch new work logs</p> <p>If you want to create a single work log, provide a single work log to the request body array</p> <p>Note that you must include an idempotency key (a UUID) in the header. You should create a new UUID every time you send a new request body. If you think the server did not handle the previous request correctly you can  resend the same request body with the same Idempotency Key and if the server already handles the previous  request after all it will not create a new one. It will return the previously created work log instead.</p> <p>This is a transactional operation, meaning that if a sub-process in this operation fails, no work logs will be created.</p>",
+        "operationId": "createWorkLogs",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyParam"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/WorkLogsCreateRequestBody"
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/createWorkLogsSuccessResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/400ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/401ErrorResponse"
+          },
+          "403": {
+            "$ref": "#/components/responses/403ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/500ErrorResponse"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Work Logs"
+        ],
+        "description": "<p>Updates existing work logs and returns the ids of the updated work logs.</p> <p>If you want to update a single work log, provide a single work log to the request body array</p> <p>This is a transactional operation, meaning that if a sub-process in this operation fails, no work logs will be updated.</p> <p>The server will return a 403 error if the referenced work log is not tied to the logged in user.</p>",
+        "operationId": "updateWorkLogs",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/WorkLogsUpdateRequestBody"
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/updateWorkLogsSuccessResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/400ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/401ErrorResponse"
+          },
+          "403": {
+            "$ref": "#/components/responses/403ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/500ErrorResponse"
+          }
+        }
+      }
+    },
+    "/work-logs/reorder": {
+      "put": {
+        "tags": [
+          "Work Logs"
+        ],
+        "description": "<p>Defines the order for DURATION worklogs in a given date range.</p> <p>Some expectations:</p> <ul>\n  <li>This endpoint expects only work logs of timeInputType 'DURATION'.\n  <li>It expects that all work logs of timeInputType 'DURATION' are included in the date range.\n  <li>The date range starts at the date of the oldest work log in the list and ends at the date of the newest.\n  <li>It expects the positionInDay to not include duplicates on any given date.\n  <li>It expects the positionInDay to increase by 1 for every new work log in the day (no gaps).\n  <li>It expects that the date of locked work logs will not have changed.\n</ul> <p>If one or more of these expectations are not met a 400 error will be returned.</p> <p>The server will return a 403 error if the referenced work log is not tied to the logged in user.</p>",
+        "operationId": "reorderWorkLogs",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/WorkLogsReorderRequestBody"
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/updateWorkLogsSuccessResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/400ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/401ErrorResponse"
+          },
+          "403": {
+            "$ref": "#/components/responses/403ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/500ErrorResponse"
+          }
+        }
+      }
+    },
+    "/work-logs/{id}": {
+      "get": {
+        "tags": [
+          "Work Logs"
+        ],
+        "description": "<p>Retrieves a specific work log</p> <p>If the given id does not exist or if the logged in user does not have access to it an HTTP 404 will be returned.</p> <p>The server will return a 403 error if the referenced work log is not tied to the logged in user.</p>",
+        "operationId": "getWorkLog",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/getWorkLogSuccessResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/400ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/401ErrorResponse"
+          },
+          "403": {
+            "$ref": "#/components/responses/403ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/404ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/500ErrorResponse"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Work Logs"
+        ],
+        "description": "<p>Deletes a sepecific work log</p> <p>If the given id does not exist or if the logged in user does not have access to it an HTTP 404 will be returned.</p> <p>The server will return a 403 error if the referenced work log is not tied to the logged in user.</p>",
+        "operationId": "deleteWorkLog",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdParam"
+          }
+        ],
+        "responses": {
+          "204": {
+            "$ref": "#/components/responses/204ResourceDeleted"
+          },
+          "401": {
+            "$ref": "#/components/responses/401ErrorResponse"
+          },
+          "403": {
+            "$ref": "#/components/responses/403ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/404ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/500ErrorResponse"
+          }
+        }
+      }
+    },
+    "/work-logs/jira/{jiraWorkLogId}": {
+      "get": {
+        "tags": [
+          "Work Logs"
+        ],
+        "description": "<p>Retrieves a specific work log using a Jira work log id.</p> <p>If the given id does not exist or if the logged in user does not have access to it an HTTP 404 will be returned.</p> <p>The server will return a 403 error if the referenced work log is not tied to the logged in user.</p>",
+        "operationId": "getWorkLogByJiraId",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/JiraWorkLogIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/getWorkLogSuccessResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/400ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/401ErrorResponse"
+          },
+          "403": {
+            "$ref": "#/components/responses/403ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/404ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/500ErrorResponse"
+          }
+        }
+      }
+    },
+    "/log-entities": {
+      "get": {
+        "tags": [
+          "Log Entities"
+        ],
+        "description": "<p>Returns an array of all the LogEntity objects that match the given query parameters, sorted in the order that the frontend  needs to render them. For sorting logic see the Scope document.</p>",
+        "operationId": "getLogEntity",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "description": "The string that one of the log entities needs to match on",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "required": false,
+            "example": "accou"
+          },
+          {
+            "name": "isFavorite",
+            "in": "query",
+            "description": "If provided and 'true' then only log entities that have been marked as favorite by the currently logged in user (cookie/apikey) will be returned",
+            "schema": {
+              "type": "boolean"
+            },
+            "required": false,
+            "example": true
+          },
+          {
+            "name": "isRecent",
+            "in": "query",
+            "description": "If provided and 'true' then only log entities that have been recently booked on by this user will be returned",
+            "schema": {
+              "type": "boolean"
+            },
+            "required": false,
+            "example": true
+          },
+          {
+            "name": "activityType",
+            "in": "query",
+            "description": "If provided only log entities that with the given activityType are returned",
+            "schema": {
+              "$ref": "#/components/schemas/ActivityType"
+            },
+            "required": false,
+            "example": "CLIENT_WORK"
+          },
+          {
+            "name": "sourceKey",
+            "in": "query",
+            "description": "If provided only log entities that are connected to the given source key are returned. If the given sourceKey is not in a valid jira key format a 400 will be returned. If the project part of the Jira key is not an existing Jira project key in any of the Bridge contracts a 404 will be returned. ",
+            "schema": {
+              "$ref": "#/components/schemas/SourceKey"
+            },
+            "required": false,
+            "example": "IPTM-123"
+          },
+          {
+            "name": "forcedLogEntity",
+            "in": "query",
+            "description": "The UUID of the log entity that must be included in the response regardless whether it matches any of the other filters or not. ",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "required": false
+          },
+          {
+            "name": "includeRestricted",
+            "in": "query",
+            "description": "If provided and 'true' then also include the log entities that the logged in user is not allowed to log on.",
+            "schema": {
+              "type": "boolean"
+            },
+            "required": false,
+            "example": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/getLogEntitySuccessResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/400ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/401ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/500ErrorResponse"
+          }
+        }
+      }
+    },
+    "/log-entities/{id}/favorite": {
+      "put": {
+        "tags": [
+          "Log Entities"
+        ],
+        "description": "<p>Marks or unmarks a log entity as favorite</p> <p>If the given id does not exist or if the logged in user does not have access to it an HTTP 404 will be returned.</p>",
+        "operationId": "updateFavorite",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/MarkAsFavoriteRequestBody"
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdParam"
+          }
+        ],
+        "responses": {
+          "204": {
+            "$ref": "#/components/responses/204ResourceUpdated"
+          },
+          "400": {
+            "$ref": "#/components/responses/400ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/401ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/404ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/500ErrorResponse"
+          }
+        }
+      }
+    },
+    "/log-schedule": {
+      "get": {
+        "tags": [
+          "Log Schedule"
+        ],
+        "description": "<p>Returns the number of minutes that the logged in user must log per day in the given time window.</p> <p>Note that all dates from start to end data will occur in the array, even if 0 minutes need to be booked on that day.</p>",
+        "operationId": "getLogSchedule",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StartDateParam"
+          },
+          {
+            "$ref": "#/components/parameters/EndDateParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/getLogScheduleSuccessResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/400ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/401ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/500ErrorResponse"
+          }
+        }
+      }
+    },
+    "/preferences": {
+      "get": {
+        "tags": [
+          "Preferences"
+        ],
+        "description": "<p>Returns an array containing all the preferences that the logged in user has selected</p>",
+        "operationId": "getPreferences",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/getPreferencesSuccessResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/400ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/401ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/500ErrorResponse"
+          }
+        }
+      }
+    },
+    "/preferences/{key}": {
+      "put": {
+        "tags": [
+          "Preferences"
+        ],
+        "description": "<p>Updates a specific preference for the logged in user. If the preferences does not exist it will be created.</p> <p>A maximum of 200 preference keys per user can be stored.</p>",
+        "operationId": "updatePreference",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/PreferenceUpdateRequestBody"
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/KeyParam"
+          }
+        ],
+        "responses": {
+          "204": {
+            "$ref": "#/components/responses/204ResourceUpdated"
+          },
+          "400": {
+            "$ref": "#/components/responses/400ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/401ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/404ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/500ErrorResponse"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Preferences"
+        ],
+        "description": "<p>Deletes a specific preference for the logged in user<p>",
+        "operationId": "deletePreference",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/KeyParam"
+          }
+        ],
+        "responses": {
+          "204": {
+            "$ref": "#/components/responses/204ResourceDeleted"
+          },
+          "401": {
+            "$ref": "#/components/responses/401ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/404ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/500ErrorResponse"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Date": {
+        "type": "string",
+        "format": "date",
+        "description": "The default Date object as it used throughout the API",
+        "minLength": 10,
+        "maxLength": 10,
+        "example": "2022-01-31"
+      },
+      "DefaultResponseObjectWithoutData": {
+        "description": "The default response object for the Bridge API.",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "number",
+            "description": "The status of the response.",
+            "example": 200
+          },
+          "message": {
+            "type": "string",
+            "description": "The message of the response.",
+            "example": "Success"
+          }
+        },
+        "required": [
+          "status",
+          "message"
+        ]
+      },
+      "Description": {
+        "type": "string",
+        "maxLength": 2044,
+        "example": "Standup with the team"
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "description": "Details about the server side errors that were the result of an API call by the client.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150,
+            "description": "High level textual error code, to help categorize the errors.",
+            "example": "timetracking.field-validation"
+          },
+          "message": {
+            "type": "string",
+            "description": "Brief description of what went wrong. Should be understandable by the end user in the language of the UI.",
+            "minLength": 1,
+            "maxLength": 500,
+            "example": "One or more fields don't match the validation rules."
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "message"
+        ]
+      },
+      "UUID": {
+        "type": "string",
+        "format": "uuid",
+        "minLength": 1,
+        "maxLength": 40,
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89AB][0-9a-f]{3}-[0-9a-f]{12}$",
+        "example": "7a83dcce-070e-4c02-9110-d51ed2493a6b"
+      },
+      "HHMM": {
+        "type": "string",
+        "pattern": "^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9])|24:00$",
+        "minLength": 5,
+        "maxLength": 5,
+        "description": "A 24 hours based HH:MM time format with mandatory leading 0. For midnight both 00:00 and 24:00 are  supported, where 00:00 means at the beginning of the day and 24:00 at the end of the day.",
+        "example": "23:15"
+      },
+      "LogSchedule": {
+        "type": "array",
+        "description": "An array of days with per day the number of minutes the user should book on that day",
+        "items": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "$ref": "#/components/schemas/Date"
+            },
+            "scheduledTime": {
+              "$ref": "#/components/schemas/MinutesOfDay"
+            }
+          },
+          "required": [
+            "date",
+            "scheduledTime"
+          ]
+        }
+      },
+      "PositionInDay": {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 0,
+        "description": "<p>When the timeInputType equals DURATION then this determines the position in which the work log should be listed in the day. When the timeInputType equals FROM_TO this field has no meaning even if it has a value (which is should not have)."
+      },
+      "PreferenceKey": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100,
+        "description": "The key of a Key-Value pair for storing preferences"
+      },
+      "PreferenceValue": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 65000,
+        "description": "The value of a Key-Value pair for storing preferences"
+      },
+      "SourceReference": {
+        "type": "string",
+        "description": "A ticket number. This can for example be a Jira or Kayako ticket, or some other ticketing system.",
+        "minLength": 1,
+        "maxLength": 255,
+        "example": "IAPPO-3000"
+      },
+      "SourceUrl": {
+        "type": "string",
+        "description": "A url that links to the ticket in the issue tracking system. This typically is a link to the ticket in the  iO Jira instance, but it can be any ticketing system. Not all issue Ids are valid ticket numbers so this  url is not always available.",
+        "minLength": 1,
+        "example": "https://jira.hosted-tools.com/browse/IAPPO-3000"
+      },
+      "SourceTitle": {
+        "type": "string",
+        "description": "The title / description of the sourceReference as provided by the ticketing system",
+        "minLength": 1,
+        "example": "STANDUP - DNA App"
+      },
+      "MinutesOfDay": {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 1,
+        "maximum": 1440,
+        "description": "A number of minutes within a 24 hour period. This needs to be a minumum of 5 minutes."
+      },
+      "KeyValue": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/PreferenceKey"
+          },
+          "value": {
+            "$ref": "#/components/schemas/PreferenceValue"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ]
+      },
+      "LogEntitiesWithSuggestions": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/LogEntityWithSuggestions"
+        }
+      },
+      "LogEntity": {
+        "description": "<p>An instance of one of the Bridge entities on which work can be logged.</p>",
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "labels": {
+            "type": "array",
+            "description": "<p>A list containing all of the entities that are related to this log entity. These entities are related to each other in an hiarchical way. The first label in the list is the name of the entity that is highest in the hierarchy  and the last one in the list is the lowest.<p> <p>The frontend will take this list, concat the strings in some way, and display them to the user. Some examples:</p> <ul>\n  <li>If this log entity relates to a project then the list will contain two strings in the following order: \n  the name of the brand this project belongs to and the project name itself.\n  <li>If this log entity relates to a contract line then the list will contain four strings in the following order: \n  the name of the brand, project, and contract this contract line belongs to and the contract line name itself.\n</ul>",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "description": "the name of one of the entities",
+              "minLength": 1
+            }
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Indicated if the backend entity this log entity realtes to is active"
+          },
+          "isFavorite": {
+            "$ref": "#/components/schemas/Favorite"
+          },
+          "activityType": {
+            "$ref": "#/components/schemas/ActivityType"
+          },
+          "isSourceReferenceRequired": {
+            "type": "boolean",
+            "description": "If true then work logs linked to this log entity must always include a Source Reference. Otherwise a  source Reference in the work log is optional.          "
+          },
+          "isRestrictedForUser": {
+            "type": "boolean",
+            "description": "If true then the logged in user is not allowed to log work on this log entity."
+          },
+          "requestAccessLink": {
+            "type": "string",
+            "description": "If the field isRestrictedForUser is true so the user is not allowed to log work on this log entity, then this field will contain a root relative link to a page where the user can request access. If the user is allowed to log work on this log entity then this field will be omitted or null.",
+            "example": "/projects/users/link?project_id=11074"
+          },
+          "tag": {
+            "type": "string",
+            "description": "String identifier or label used to categorize or classify different elements or entities for example opportunities, non-billables.",
+            "example": "Opportunity"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "isActive",
+          "isFavorite",
+          "isSourceReferenceRequired",
+          "isRestrictedForUser"
+        ]
+      },
+      "LogEntityWithSuggestions": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/LogEntity"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "suggestionGroup": {
+                "$ref": "#/components/schemas/SuggestionGroup"
+              },
+              "isDefault": {
+                "type": "boolean",
+                "description": "Indicates that this log entity should be selected by default given the provided sourceKey. Multipe log entities can be marked as default indicating that all these log entities are equally likely to be the best match.  It's up to the user to pick the best one.  If no sourceKey filter was proviced then false will be returned."
+              }
+            },
+            "required": [
+              "suggestionGroup",
+              "isDefault"
+            ]
+          }
+        ]
+      },
+      "MarkAsFavorite": {
+        "type": "object",
+        "description": "Holds the information needed to (un)mark a LogEntity as favorite.",
+        "properties": {
+          "isFavorite": {
+            "$ref": "#/components/schemas/Favorite"
+          }
+        }
+      },
+      "SuggestionGroup": {
+        "type": "string",
+        "enum": [
+          "CONTRACT",
+          "PROJECT",
+          "OTHER"
+        ],
+        "description": "The level of confidence that this log entity will be the best suggestion based on the given sourceKey and jiraComponents. <ul>\n  <li>CONTRACT: Highest level of confidence. The given sourceKey is directly linked to this log entity's contract or contract line.\n  <li>PROJECT: Medium level of confidence. The given sourceKey is not related to any contract(line(), which is mostly because of a missing jira component. However, this log entity's contract(line) ís related to the sourcekey's jira project key.\n  <li>OTHER: Low level of confidence. The log entity's contract or contract is not linked to the sourceKey's project or contract. This value will also be used if no sourceKey or jiraComponents is provided.\n</ul>"
+      },
+      "Favorite": {
+        "type": "boolean",
+        "description": "True if this log entity has been marked as favorite for the currently logged in user.",
+        "example": true
+      },
+      "Preferences": {
+        "description": "An array of all the preferences that the user has selected",
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Preference"
+        }
+      },
+      "Preference": {
+        "$ref": "#/components/schemas/KeyValue"
+      },
+      "ActivityType": {
+        "type": "string",
+        "enum": [
+          "CLIENT_WORK",
+          "DEVELOP_YOURSELF",
+          "IMPROVING_IO",
+          "IDLE"
+        ]
+      },
+      "SourceKey": {
+        "type": "string",
+        "description": "A specific source key as it is known in the source system such as Jira or Kayako.",
+        "maxLength": 100,
+        "example": "IPTM-123"
+      },
+      "TimeInputType": {
+        "type": "string",
+        "description": "The way a work log was saved by the user",
+        "enum": [
+          "FROM_TO",
+          "DURATION"
+        ],
+        "example": "DURATION"
+      },
+      "WorkLog": {
+        "type": "object",
+        "description": "<p>A work log item as returned from the API. See the WorkLogCreateRequestModel schema for the business rules of these fields.",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "isLocked": {
+            "type": "boolean",
+            "description": "True if this log can no longer be changed, false otherwise."
+          },
+          "batchId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "date": {
+            "$ref": "#/components/schemas/Date"
+          },
+          "timeInputType": {
+            "$ref": "#/components/schemas/TimeInputType"
+          },
+          "startTime": {
+            "$ref": "#/components/schemas/HHMM"
+          },
+          "stopTime": {
+            "$ref": "#/components/schemas/HHMM"
+          },
+          "minutesSpent": {
+            "$ref": "#/components/schemas/MinutesOfDay"
+          },
+          "description": {
+            "$ref": "#/components/schemas/Description"
+          },
+          "sourceReference": {
+            "$ref": "#/components/schemas/SourceReference"
+          },
+          "sourceUrl": {
+            "$ref": "#/components/schemas/SourceUrl"
+          },
+          "sourceTitle": {
+            "$ref": "#/components/schemas/SourceTitle"
+          },
+          "positionInDay": {
+            "$ref": "#/components/schemas/PositionInDay"
+          },
+          "logEntity": {
+            "$ref": "#/components/schemas/LogEntity"
+          }
+        },
+        "required": [
+          "id",
+          "isLocked",
+          "date",
+          "timeInputType",
+          "minutesSpent",
+          "logEntity"
+        ]
+      },
+      "WorkLogsPerDay": {
+        "type": "array",
+        "description": "An array of work logs grouped by date",
+        "items": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Date"
+                }
+              ],
+              "description": "The common date of all the WorkLogs on this object"
+            },
+            "workLogs": {
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "$ref": "#/components/schemas/WorkLog"
+              }
+            }
+          },
+          "required": [
+            "date",
+            "WorkLogs"
+          ]
+        }
+      },
+      "WorkLogCreateRequestModel": {
+        "type": "object",
+        "description": "<p>A work log item  as sent to the API. Business rules:  <ul>\n  <li> The minimum allowed time spent is 1 minutes. \n  <li> If timeInputType = FROM_TO then startTime and stopTime are required, otherwise they must be omitted\n  <li> If timeInputType = FROM_TO then minutesSpent is equal to the number of minutes between stopTime and startTime.\n  <li> If timeInputType = FROM_TO then positionInDay is meaningless since the order is determined by the startTime. \n    In the case timeInputType = DURATION then positionInDay must have a value. Note that for older work logs the value can be null.\n  <li> The batchId groups together multiple work logs that have been created together in a single action. For example:\n  The action of creating a new work log while selecting two dates. This results in two different work logs with the\n  same BatchOperationId.\n</ul>",
+        "properties": {
+          "date": {
+            "$ref": "#/components/schemas/Date"
+          },
+          "timeInputType": {
+            "$ref": "#/components/schemas/TimeInputType"
+          },
+          "startTime": {
+            "$ref": "#/components/schemas/HHMM"
+          },
+          "stopTime": {
+            "$ref": "#/components/schemas/HHMM"
+          },
+          "minutesSpent": {
+            "$ref": "#/components/schemas/MinutesOfDay"
+          },
+          "description": {
+            "$ref": "#/components/schemas/Description"
+          },
+          "sourceReference": {
+            "$ref": "#/components/schemas/SourceReference"
+          },
+          "positionInDay": {
+            "description": "<p>If no value is provided for this field and timeInputType is DURATION then the server will add this work log to the  end of the day. If timeInputType is FROM_TO then this field should be omitted. <p>Note that the backend does not check for duplicates of the positionInDay. It's up to the caller to make sure no  duplicates are created.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PositionInDay"
+              }
+            ]
+          },
+          "logEntityId": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "date",
+          "timeInputType",
+          "minutesSpent",
+          "description",
+          "logEntityId"
+        ]
+      },
+      "WorkLogUpdateRequestModel": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WorkLogCreateRequestModel"
+          }
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "WorkLogReorderRequestModel": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ReorderWorkLog"
+          }
+        ]
+      },
+      "ReorderWorkLog": {
+        "type": "object",
+        "description": "Contains only the Work log fields that are necessary to reorder a work log.",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "date": {
+            "$ref": "#/components/schemas/Date"
+          },
+          "positionInDay": {
+            "$ref": "#/components/schemas/PositionInDay"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "positionInDay"
+        ]
+      },
+      "WorkLogsUpsertedResponseModel": {
+        "type": "array",
+        "description": "A list of identifiers of successfully created or updated work logs.",
+        "items": {
+          "$ref": "#/components/schemas/UUID"
+        }
+      }
+    },
+    "parameters": {
+      "IdempotencyKeyParam": {
+        "in": "header",
+        "name": "Idempotency-Key",
+        "required": true,
+        "description": "<p>Unique ID to makes sure that an accidental repost will not result in two identical work logs.</p> <p>The server will check if a request with the same ID has been handled before. If so the server will return the  existing record, otherwise a new record will be created.</p> <p>The ID will be stored for 24 hours.</p> <p>See https://tools.ietf.org/id/draft-idempotency-header-01.html for more information.</p>",
+        "schema": {
+          "$ref": "#/components/schemas/UUID"
+        }
+      },
+      "KeyParam": {
+        "in": "path",
+        "name": "key",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/PreferenceKey"
+        }
+      },
+      "IdParam": {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/UUID"
+        }
+      },
+      "JiraWorkLogIdParam": {
+        "in": "path",
+        "name": "jiraWorkLogId",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "example": "2468830"
+        }
+      },
+      "StartDateParam": {
+        "in": "query",
+        "name": "startDate",
+        "description": "The minimal date in the range. This is inclusive, so items with this exact date will also be included.",
+        "schema": {
+          "$ref": "#/components/schemas/Date"
+        },
+        "required": true,
+        "example": "2022-01-31"
+      },
+      "EndDateParam": {
+        "in": "query",
+        "name": "endDate",
+        "description": "The maximum date in the range. This is inclusive, so items with this exact date will also be included.",
+        "schema": {
+          "$ref": "#/components/schemas/Date"
+        },
+        "required": true,
+        "example": "2022-02-04"
+      }
+    },
+    "requestBodies": {
+      "MarkAsFavoriteRequestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MarkAsFavorite"
+            }
+          }
+        }
+      },
+      "PreferenceUpdateRequestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PreferenceValue"
+            }
+          }
+        }
+      },
+      "WorkLogsCreateRequestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/components/schemas/WorkLogCreateRequestModel"
+              }
+            }
+          }
+        }
+      },
+      "WorkLogsUpdateRequestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/components/schemas/WorkLogUpdateRequestModel"
+              }
+            }
+          }
+        }
+      },
+      "WorkLogsReorderRequestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/components/schemas/WorkLogReorderRequestModel"
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "getWorkLogsSuccessResponse": {
+        "description": "Successful operation",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkLogsPerDay"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "createWorkLogsSuccessResponse": {
+        "description": "Work logs have been created.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkLogsUpsertedResponseModel"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "updateWorkLogsSuccessResponse": {
+        "description": "Work logs have been updated.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkLogsUpsertedResponseModel"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "getWorkLogSuccessResponse": {
+        "description": "Successfully got work log.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkLog"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "getLogEntitySuccessResponse": {
+        "description": "Successfully got log entities.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LogEntitiesWithSuggestions"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "getLogScheduleSuccessResponse": {
+        "description": "Successfully got log schedule.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LogSchedule"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "getPreferencesSuccessResponse": {
+        "description": "Successfully got preferences.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Preferences"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "201ResourceCreated": {
+        "description": "The resources have been created.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+            }
+          }
+        }
+      },
+      "204ResourceUpdated": {
+        "description": "The resource has been updated.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+            }
+          }
+        }
+      },
+      "204ResourceDeleted": {
+        "description": "The resource has been deleted.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+            }
+          }
+        }
+      },
+      "400ErrorResponse": {
+        "description": "Bad request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "401ErrorResponse": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "403ErrorResponse": {
+        "description": "Forbidden",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "404ErrorResponse": {
+        "description": "Not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "500ErrorResponse": {
+        "description": "Internal Server Error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/DefaultResponseObjectWithoutData"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

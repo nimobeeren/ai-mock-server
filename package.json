@@ -11,6 +11,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@apidevtools/json-schema-ref-parser": "^11.7.0",
     "@types/node": "^22.5.4",
     "express": "^4.19.2",
     "openai": "^4.57.3"
