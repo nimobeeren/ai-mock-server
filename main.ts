@@ -2,9 +2,10 @@ import "dotenv/config";
 
 import $RefParser from "@apidevtools/json-schema-ref-parser";
 import express, { type Request, type Response } from "express";
+import _ from "lodash";
 import { AzureOpenAI } from "openai";
 
-import spec from "./specs/ecommerce.json";
+import spec from "./specs/timetracking.json";
 
 const app = express();
 
@@ -24,7 +25,11 @@ app.get("*", async (req: Request, res: Response) => {
 
   console.log(`[200] ${path}`);
 
-  const responseSchema = specPath.get.responses[200].content["application/json"].schema;
+  let responseSchema = specPath.get.responses[200].content["application/json"].schema;
+
+  responseSchema = mergeAllOf(responseSchema);
+
+  console.log("after merge", JSON.stringify(responseSchema, null, 2));
 
   const client = new AzureOpenAI();
   const completion = await client.chat.completions.create({
@@ -63,3 +68,32 @@ app.get("*", async (req: Request, res: Response) => {
 });
 
 app.listen(5010, () => console.log("listening"));
+
+// Function to recursively merge allOf schemas and concatenate required fields
+function mergeAllOf(schema) {
+  if (schema.allOf) {
+    const merged = schema.allOf.reduce((acc, subschema) => {
+      const mergedSubschema = mergeAllOf(subschema);
+      const combinedRequired = _.union(acc.required || [], mergedSubschema.required || []);
+      const combinedDescription = [acc.description, mergedSubschema.description]
+        .filter(Boolean)
+        .join(" ");
+      return _.merge(acc, mergedSubschema, {
+        required: combinedRequired,
+        description: combinedDescription,
+      });
+    }, {});
+
+    return _.omit({ ...schema, ...merged }, "allOf");
+  }
+
+  if (schema.type === "object" && schema.properties) {
+    Object.keys(schema.properties).forEach((key) => {
+      schema.properties[key] = mergeAllOf(schema.properties[key]);
+    });
+  } else if (schema.type === "array" && schema.items) {
+    schema.items = mergeAllOf(schema.items);
+  }
+
+  return _.cloneDeep(schema);
+}
