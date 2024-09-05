@@ -1,15 +1,23 @@
 import "dotenv/config";
 
-import express from "express";
+import express, { type Request, type Response } from "express";
 import { AzureOpenAI } from "openai";
 import spec from "./openapi.json";
 
 const app = express();
 
-app.get("/products", async (req, res) => {
-  const responseSchema =
-    spec.paths["/products"].get.responses[200].content["application/json"]
-      .schema;
+app.get("*", async (req: Request, res: Response) => {
+  let path = req.path;
+  if (path.endsWith("/")) {
+    path = path.slice(0, -1);
+  }
+
+  const specPath = spec.paths[path];
+  if (!specPath) {
+    return res.status(404).send();
+  }
+
+  const responseSchema = specPath.get.responses[200].content["application/json"].schema;
 
   console.log(JSON.stringify(responseSchema, null, 2));
 
