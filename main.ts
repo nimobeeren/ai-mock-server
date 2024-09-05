@@ -1,6 +1,12 @@
 import "dotenv/config";
 
 import { AzureOpenAI } from "openai";
+import spec from "./openapi.json";
+
+const responseSchema =
+  spec.paths["/products"].get.responses[200].content["application/json"].schema;
+
+console.log(JSON.stringify(responseSchema, null, 2));
 
 const client = new AzureOpenAI();
 const completion = await client.chat.completions.create({
@@ -16,16 +22,11 @@ const completion = await client.chat.completions.create({
     {
       type: "function",
       function: {
-        name: "returnData",
+        name: "response",
         parameters: {
           type: "object",
           properties: {
-            firstName: {
-              type: "string",
-            },
-            lastName: {
-              type: "string",
-            },
+            response: responseSchema,
           },
           required: ["firstName", "lastName"],
           additionalProperties: false,
@@ -36,6 +37,6 @@ const completion = await client.chat.completions.create({
   tool_choice: "required",
 });
 
-console.log(
-  JSON.stringify(completion.choices[0].message.tool_calls?.[0], null, 2)
-);
+const response = JSON.parse(completion.choices[0].message.tool_calls?.[0].function.arguments!);
+
+console.log(response);
