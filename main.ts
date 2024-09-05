@@ -29,8 +29,6 @@ app.get("*", async (req: Request, res: Response) => {
 
   responseSchema = mergeAllOf(responseSchema);
 
-  console.log("after merge", JSON.stringify(responseSchema, null, 2));
-
   const client = new AzureOpenAI();
   const completion = await client.chat.completions.create({
     model: "gpt-4o",
@@ -39,6 +37,10 @@ app.get("*", async (req: Request, res: Response) => {
         role: "system",
         content:
           "You generate mock data for a development server based on an OpenAPI schema. Call the provided function once.",
+      },
+      {
+        role: "user",
+        content: `Query parameters: ${JSON.stringify(req.query)}`,
       },
     ],
     tools: [
@@ -51,7 +53,7 @@ app.get("*", async (req: Request, res: Response) => {
             properties: {
               response: responseSchema,
             },
-            required: ["firstName", "lastName"],
+            required: ["response"],
             additionalProperties: false,
           },
         },
