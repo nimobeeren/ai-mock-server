@@ -11,21 +11,24 @@ const app = express();
 
 await $RefParser.dereference(spec);
 
-app.get("*", async (req: Request, res: Response) => {
+app.all("*", async (req: Request, res: Response) => {
   let path = req.path;
   if (path.endsWith("/")) {
     path = path.slice(0, -1);
   }
 
-  const specPath = spec.paths[path];
-  if (!specPath) {
+  if (!spec.paths[path]) {
     console.log(`[404] ${path}`);
     return res.status(404).send();
   }
 
-  console.log(`[200] ${path}`);
+  const method = req.method.toLowerCase();
+  if (!spec.paths[path][method]) {
+    console.log(`[405] ${path}`);
+    return res.status(405).send();
+  }
 
-  let responseSchema = specPath.get.responses[200].content["application/json"].schema;
+  let responseSchema = spec.paths[path][method].responses[200].content["application/json"].schema;
   responseSchema = mergeAllOf(responseSchema);
   // responseSchema = removeIllegalProperties(responseSchema);
   // responseSchema = disallowAdditionalProperties(responseSchema);
@@ -79,6 +82,7 @@ app.get("*", async (req: Request, res: Response) => {
   );
   const { response, status } = functionCall;
 
+  console.log(`[${status}] ${path}`);
   return res.status(status ?? response.status ?? 200).json(response);
 });
 
