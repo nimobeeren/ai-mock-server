@@ -271,7 +271,7 @@
             "type": "string"
           }
         },
-        "required": ["name", "email"]
+        "required": ["id", "name", "email"]
       },
       "Product": {
         "type": "object",

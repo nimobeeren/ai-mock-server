@@ -28,10 +28,26 @@ app.all("*", async (req: Request, res: Response) => {
     return res.status(405).send();
   }
 
-  let responseSchema = spec.paths[path][method].responses[200].content["application/json"].schema;
-  responseSchema = mergeAllOf(responseSchema);
-  // responseSchema = removeIllegalProperties(responseSchema);
-  // responseSchema = disallowAdditionalProperties(responseSchema);
+  let responseBodySchema =
+    spec.paths[path][method].responses[200].content["application/json"].schema;
+
+  // Make some changes to the schema to make it more compatible with OpenAI Structured Output
+  responseBodySchema = mergeAllOf(responseBodySchema);
+  responseBodySchema = removeUnsupportedProperties(responseBodySchema);
+  responseBodySchema = disallowAdditionalProperties(responseBodySchema);
+  responseBodySchema = makeAllPropertiesRequired(responseBodySchema);
+
+  const responseSchema = {
+    type: "object",
+    properties: {
+      body: responseBodySchema,
+      status: {
+        type: "integer",
+      },
+    },
+    required: ["body", "status"],
+    additionalProperties: false,
+  };
 
   const client = new AzureOpenAI();
   const completion = await client.chat.completions.create({
@@ -39,56 +55,32 @@ app.all("*", async (req: Request, res: Response) => {
     messages: [
       {
         role: "system",
-        content:
-          "You generate mock data for a development server based on an OpenAPI schema. Call the provided function once.",
+        content: "Generate realistic mock data for an API.",
       },
       {
         role: "user",
         content: `Query parameters: ${JSON.stringify(req.query)}`,
       },
     ],
-    // response_format: {
-    //   type: "json_schema",
-    //   json_schema: {
-    //     name: "response",
-    //     schema: responseSchema,
-    //     strict: true,
-    //   },
-    // },
-    tools: [
-      {
-        type: "function",
-        function: {
-          name: "generateResponse",
-          parameters: {
-            type: "object",
-            properties: {
-              response: responseSchema,
-              status: {
-                type: "integer",
-              },
-            },
-            required: ["response", "status"],
-            additionalProperties: false,
-          },
-        },
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "response",
+        schema: responseSchema,
+        strict: true,
       },
-    ],
-    tool_choice: "required",
+    },
   });
 
-  const functionCall = JSON.parse(
-    completion.choices[0].message.tool_calls?.[0].function.arguments!
-  );
-  const { response, status } = functionCall;
+  const { body, status } = JSON.parse(completion.choices[0].message.content!);
 
-  console.log(`[${status}] ${path}`);
-  return res.status(status ?? response.status ?? 200).json(response);
+  console.log(`[200] ${path}`);
+  return res.status(status).json(body);
 });
 
 app.listen(5010, () => console.log("listening"));
 
-// Function to recursively merge allOf schemas and concatenate required fields
+/** Recursively merges allOf schemas and concatenates required fields. */
 function mergeAllOf(schema) {
   if (schema.allOf) {
     const merged = schema.allOf.reduce((acc, subschema) => {
@@ -117,8 +109,8 @@ function mergeAllOf(schema) {
   return _.cloneDeep(schema);
 }
 
-// Remove properties that are not supported by OpenAI Structured Output
-function removeIllegalProperties(schema) {
+/** Remove properties that are not supported by OpenAI Structured Output */
+function removeUnsupportedProperties(schema) {
   const illegalProperties = [
     "minLength",
     "maxLength",
@@ -132,10 +124,10 @@ function removeIllegalProperties(schema) {
 
   if (schema.type === "object" && schema.properties) {
     Object.keys(schema.properties).forEach((key) => {
-      schema.properties[key] = removeIllegalProperties(schema.properties[key]);
+      schema.properties[key] = removeUnsupportedProperties(schema.properties[key]);
     });
   } else if (schema.type === "array" && schema.items) {
-    schema.items = removeIllegalProperties(schema.items);
+    schema.items = removeUnsupportedProperties(schema.items);
   }
 
   // Remove minLength if it exists
@@ -159,6 +151,22 @@ function disallowAdditionalProperties(schema) {
 
   if (schema.type === "object") {
     schema.additionalProperties = false;
+  }
+
+  return schema;
+}
+
+function makeAllPropertiesRequired(schema) {
+  if (schema.type === "object" && schema.properties) {
+    Object.keys(schema.properties).forEach((key) => {
+      schema.properties[key] = makeAllPropertiesRequired(schema.properties[key]);
+    });
+  } else if (schema.type === "array" && schema.items) {
+    schema.items = makeAllPropertiesRequired(schema.items);
+  }
+
+  if (schema.type === "object") {
+    schema.required = Object.keys(schema.properties);
   }
 
   return schema;
