@@ -1,22 +1,143 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "eCommerce API",
-    "description": "API for managing products and customers in an eCommerce system",
-    "version": "1.0.0"
+    "title": "Ecommerce Store API",
+    "version": "1.0.0",
+    "description": "API documentation for an ecommerce store"
   },
   "servers": [
     {
-      "url": "https://api.example.com/v1"
+      "url": "https://api.example.com"
     }
   ],
   "paths": {
-    "/products": {
+    
+    "/customers": {
       "get": {
-        "summary": "Get a list of all products",
+        "summary": "Get all customers",
+        "tags": ["customers"],
         "responses": {
           "200": {
-            "description": "A list of products",
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Customer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new customer",
+        "tags": ["customers"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Customer"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Customer created successfully"
+          }
+        }
+      }
+    },
+    "/customers/{customerId}": {
+      "get": {
+        "summary": "Get a customer by ID",
+        "tags": ["customers"],
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of the customer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a customer",
+        "tags": ["customers"],
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of the customer"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Customer"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Customer updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a customer",
+        "tags": ["customers"],
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of the customer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Customer deleted successfully"
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "summary": "Get all products",
+        "tags": ["products"],
+        "responses": {
+          "200": {
+            "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
@@ -29,24 +150,102 @@
             }
           }
         }
+      },
+      "post": {
+        "summary": "Create a new product",
+        "tags": ["products"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Product"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created successfully"
+          }
+        }
       }
     },
-    "/customers": {
+    "/products/{productId}": {
       "get": {
-        "summary": "Get a list of all customers",
+        "summary": "Get a product by ID",
+        "tags": ["products"],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID of the product"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "A list of customers",
+            "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Customer"
-                  }
+                  "$ref": "#/components/schemas/Product"
                 }
               }
             }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a product",
+        "tags": ["products"],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID of the product"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Product"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a product",
+        "tags": ["products"],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID of the product"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Product deleted successfully"
           }
         }
       }

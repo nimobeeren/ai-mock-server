@@ -5,7 +5,7 @@ import express, { type Request, type Response } from "express";
 import _ from "lodash";
 import { AzureOpenAI } from "openai";
 
-import spec from "./specs/timetracking.json";
+import spec from "./specs/ecommerce.json";
 
 const app = express();
 
