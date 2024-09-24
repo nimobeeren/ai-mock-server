@@ -3,6 +3,7 @@ import "dotenv/config";
 import $RefParser from "@apidevtools/json-schema-ref-parser";
 import express, { type Request, type Response } from "express";
 import _ from "lodash";
+import morgan from "morgan";
 import { AzureOpenAI } from "openai";
 
 import dedent from "dedent";
@@ -11,19 +12,19 @@ import { matchPath } from "./utils";
 
 const app = express();
 
+app.use(morgan("dev")); // log every request
+
 await $RefParser.dereference(spec);
 
 app.all("*", async (req: Request, res: Response) => {
   const [matchedPath, pathParameters] = matchPath(req.path, Object.keys(spec.paths));
 
   if (!matchedPath) {
-    console.log(`[404] ${req.path}`);
     return res.status(404).send();
   }
 
   const method = req.method.toLowerCase();
   if (!spec.paths[matchedPath][method]) {
-    console.log(`[405] ${req.path}`);
     return res.status(405).send();
   }
 
@@ -81,7 +82,7 @@ app.all("*", async (req: Request, res: Response) => {
 
   const { body, status } = JSON.parse(completion.choices[0].message.content!);
 
-  console.log(`[200] ${req.path}`);
+  // console.log(`[200] ${req.path}`);
   return res.status(status).json(body);
 });
 
