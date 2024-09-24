@@ -1,8 +1,13 @@
-export function matchPath(path: string, pathTemplates: string[]) {
+/**
+ * Matches a request path against an array of path templates (using OpenAPI syntax for path parameters), returning the matched template and parameters, if any.
+ */
+export function matchPath(
+  path: string,
+  pathTemplates: string[]
+): [null | string, Record<string, string>] {
   const normalize = (p: string) => (p.endsWith("/") ? p.slice(0, -1) : p);
 
   for (let template of pathTemplates) {
-    template = normalize(template);
     const regex = new RegExp(
       `^${normalize(template)
         .split("/")
@@ -13,13 +18,11 @@ export function matchPath(path: string, pathTemplates: string[]) {
         )
         .join("/")}$`
     );
-    console.log(regex);
     const match = regex.exec(normalize(path));
     if (match) {
-      console.log(match);
-      return match.groups ?? {};
+      return [template, match.groups ?? {}];
     }
   }
 
-  return null;
+  return [null, {}];
 }

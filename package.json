@@ -14,6 +14,7 @@
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^11.7.0",
     "@types/node": "^22.5.4",
+    "dedent": "^1.5.3",
     "express": "^4.19.2",
     "lodash": "^4.17.21",
     "openai": "^4.57.3"

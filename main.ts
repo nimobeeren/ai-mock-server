@@ -5,31 +5,30 @@ import express, { type Request, type Response } from "express";
 import _ from "lodash";
 import { AzureOpenAI } from "openai";
 
+import dedent from "dedent";
 import spec from "./specs/ecommerce.json";
+import { matchPath } from "./utils";
 
 const app = express();
 
 await $RefParser.dereference(spec);
 
 app.all("*", async (req: Request, res: Response) => {
-  let path = req.path;
-  if (path.endsWith("/")) {
-    path = path.slice(0, -1);
-  }
+  const [matchedPath, pathParameters] = matchPath(req.path, Object.keys(spec.paths));
 
-  if (!spec.paths[path]) {
-    console.log(`[404] ${path}`);
+  if (!matchedPath) {
+    console.log(`[404] ${req.path}`);
     return res.status(404).send();
   }
 
   const method = req.method.toLowerCase();
-  if (!spec.paths[path][method]) {
-    console.log(`[405] ${path}`);
+  if (!spec.paths[matchedPath][method]) {
+    console.log(`[405] ${req.path}`);
     return res.status(405).send();
   }
 
   let responseBodySchema =
-    spec.paths[path][method].responses[200].content["application/json"].schema;
+    spec.paths[matchedPath][method].responses[200].content["application/json"].schema;
 
   // Make some changes to the schema to make it more compatible with OpenAI Structured Output
   responseBodySchema = mergeAllOf(responseBodySchema);
@@ -48,20 +47,28 @@ app.all("*", async (req: Request, res: Response) => {
     required: ["body", "status"],
     additionalProperties: false,
   };
+  console.log("Schema:", JSON.stringify(responseSchema, null, 2));
+
+  const messages = [
+    {
+      role: "system" as const,
+      content: "Generate realistic mock data for an API.",
+    },
+    {
+      role: "user" as const,
+      content: dedent`
+      Query parameters: ${JSON.stringify(req.query)}
+      
+      Path parameters: ${JSON.stringify(pathParameters)}
+      `,
+    },
+  ];
+  console.log("Messages:", JSON.stringify(messages, null, 2));
 
   const client = new AzureOpenAI();
   const completion = await client.chat.completions.create({
     model: "gpt-4o",
-    messages: [
-      {
-        role: "system",
-        content: "Generate realistic mock data for an API.",
-      },
-      {
-        role: "user",
-        content: `Query parameters: ${JSON.stringify(req.query)}`,
-      },
-    ],
+    messages: messages,
     response_format: {
       type: "json_schema",
       json_schema: {
@@ -74,7 +81,7 @@ app.all("*", async (req: Request, res: Response) => {
 
   const { body, status } = JSON.parse(completion.choices[0].message.content!);
 
-  console.log(`[200] ${path}`);
+  console.log(`[200] ${req.path}`);
   return res.status(status).json(body);
 });
 
