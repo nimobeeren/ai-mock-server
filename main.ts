@@ -14,7 +14,7 @@ const app = express();
 
 app.use(morgan("dev")); // log every request
 
-await $RefParser.dereference(spec);
+await $RefParser.dereference(spec); // inline all $ref references
 
 app.all("*", async (req: Request, res: Response) => {
   const [matchedPath, pathParameters] = matchPath(req.path, Object.keys(spec.paths));
@@ -28,8 +28,21 @@ app.all("*", async (req: Request, res: Response) => {
     return res.status(405).send();
   }
 
-  let responseBodySchema =
-    spec.paths[matchedPath][method].responses[200].content["application/json"].schema;
+  const responseStatus = Number(Object.keys(spec.paths[matchedPath][method].responses)[0]);
+
+  // If response has no content, respond with status code from spec and no body
+  const responseContent = spec.paths[matchedPath][method].responses[responseStatus].content;
+  if (!responseContent) {
+    return res.status(responseStatus).send();
+  }
+
+  // If there is no JSON schema for the response, respond with HTTP 406 Unacceptable
+  // This is abusing HTTP 406 a bit since we're not actually looking at the Accept headers sent by
+  // the client, just assuming they want JSON
+  let responseBodySchema = responseContent["application/json"]?.schema;
+  if (!responseBodySchema) {
+    return res.status(406).send();
+  }
 
   // Make some changes to the schema to make it more compatible with OpenAI Structured Output
   responseBodySchema = mergeAllOf(responseBodySchema);
@@ -58,9 +71,9 @@ app.all("*", async (req: Request, res: Response) => {
     {
       role: "user" as const,
       content: dedent`
-      Query parameters: ${JSON.stringify(req.query)}
-      
-      Path parameters: ${JSON.stringify(pathParameters)}
+        Query parameters: ${JSON.stringify(req.query)}
+        
+        Path parameters: ${JSON.stringify(pathParameters)}
       `,
     },
   ];
